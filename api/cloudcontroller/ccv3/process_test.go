@@ -373,6 +373,7 @@ var _ = Describe("Process", func() {
 					"HealthCheckType":              Equal(constant.HTTP),
 					"HealthCheckEndpoint":          Equal("/health"),
 					"HealthCheckInvocationTimeout": Equal(42),
+					"HealthCheckTimeout":           Equal(90),
 				}))
 			})
 		})
@@ -527,11 +528,12 @@ var _ = Describe("Process", func() {
 
 				Expect(processes).To(ConsistOf(
 					Process{
-						GUID:            "process-1-guid",
-						Type:            constant.ProcessTypeWeb,
-						Command:         types.FilteredString{IsSet: true, Value: "[PRIVATE DATA HIDDEN IN LISTS]"},
-						MemoryInMB:      types.NullUint64{Value: 32, IsSet: true},
-						HealthCheckType: constant.Port,
+						GUID:               "process-1-guid",
+						Type:               constant.ProcessTypeWeb,
+						Command:            types.FilteredString{IsSet: true, Value: "[PRIVATE DATA HIDDEN IN LISTS]"},
+						MemoryInMB:         types.NullUint64{Value: 32, IsSet: true},
+						HealthCheckType:    constant.Port,
+						HealthCheckTimeout: 0,
 					},
 					Process{
 						GUID:                "process-2-guid",
@@ -540,13 +542,15 @@ var _ = Describe("Process", func() {
 						MemoryInMB:          types.NullUint64{Value: 64, IsSet: true},
 						HealthCheckType:     constant.HTTP,
 						HealthCheckEndpoint: "/health",
+						HealthCheckTimeout:  60,
 					},
 					Process{
-						GUID:            "process-3-guid",
-						Type:            "console",
-						Command:         types.FilteredString{IsSet: true, Value: "[PRIVATE DATA HIDDEN IN LISTS]"},
-						MemoryInMB:      types.NullUint64{Value: 128, IsSet: true},
-						HealthCheckType: constant.Process,
+						GUID:               "process-3-guid",
+						Type:               "console",
+						Command:            types.FilteredString{IsSet: true, Value: "[PRIVATE DATA HIDDEN IN LISTS]"},
+						MemoryInMB:         types.NullUint64{Value: 128, IsSet: true},
+						HealthCheckType:    constant.Process,
+						HealthCheckTimeout: 90,
 					},
 				))
 				Expect(warnings).To(ConsistOf("warning-1", "warning-2"))
@@ -741,6 +745,49 @@ var _ = Describe("Process", func() {
 						HealthCheckType:              "some-type",
 						HealthCheckEndpoint:          "",
 						HealthCheckInvocationTimeout: 42,
+					}))
+				})
+			})
+
+			When("the health check timeout is set", func() {
+				BeforeEach(func() {
+					inputProcess.HealthCheckTimeout = 77
+					inputProcess.HealthCheckType = "some-type"
+
+					expectedBody := `{
+					"health_check": {
+						"type": "some-type",
+						"data": {
+							"endpoint": null,
+							"timeout": 77
+						}
+					}
+				}`
+					expectedResponse := `{
+					"health_check": {
+						"type": "some-type",
+						"data": {
+							"endpoint": null,
+							"timeout": 77
+						}
+					}
+				}`
+					server.AppendHandlers(
+						CombineHandlers(
+							VerifyRequest(http.MethodPatch, "/v3/processes/some-process-guid"),
+							VerifyJSON(expectedBody),
+							RespondWith(http.StatusOK, expectedResponse, http.Header{"X-Cf-Warnings": {"this is a warning"}}),
+						),
+					)
+				})
+
+				It("patches this process's health check", func() {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(warnings).To(ConsistOf("this is a warning"))
+					Expect(process).To(Equal(Process{
+						HealthCheckType:     "some-type",
+						HealthCheckEndpoint: "",
+						HealthCheckTimeout:  77,
 					}))
 				})
 			})

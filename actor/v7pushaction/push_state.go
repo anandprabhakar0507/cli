@@ -27,17 +27,18 @@ type PushState struct {
 }
 
 type FlagOverrides struct {
-	Buildpacks        []string
-	DockerImage       string
-	DockerPassword    string
-	DockerUsername    string
-	HealthCheckType   constant.HealthCheckType
-	Instances         types.NullInt
-	Memory            types.NullUint64
-	ProvidedAppPath   string
-	SkipRouteCreation bool
-	StartCommand      types.FilteredString
-	NoStart           bool
+	Buildpacks         []string
+	DockerImage        string
+	DockerPassword     string
+	DockerUsername     string
+	HealthCheckType    constant.HealthCheckType
+	HealthCheckTimeout int
+	Instances          types.NullInt
+	Memory             types.NullUint64
+	ProvidedAppPath    string
+	SkipRouteCreation  bool
+	StartCommand       types.FilteredString
+	NoStart            bool
 }
 
 func (state PushState) String() string {
